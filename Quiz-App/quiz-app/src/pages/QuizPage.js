@@ -52,19 +52,55 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 function QuizPage() {
   const navigate = useNavigate();
 
-  const [started, setStarted]   = useState(false);
-  const [topic, setTopic]       = useState('coa');
+  const [started, setStarted]     = useState(false);
+  const [topic, setTopic]         = useState('coa');
   const [questions, setQuestions] = useState([]);
-  const [current, setCurrent]   = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [answered, setAnswered] = useState(false);
-  const [timer, setTimer]       = useState(30);
-  const [answers, setAnswers]   = useState([]);
+  const [current, setCurrent]     = useState(0);
+  const [selected, setSelected]   = useState(null);
+  const [answered, setAnswered]   = useState(false);
+  const [timer, setTimer]         = useState(30);
+  const [answers, setAnswers]     = useState([]);
+
+  // ── Submit result to backend and navigate to results ──
+  const submitResult = useCallback(async (updated, score) => {
+    const topicLabel = TOPICS.find(t => t.key === topic).label;
+
+    // Always save to localStorage for Results page to read
+    localStorage.setItem('quizResult', JSON.stringify({
+      score,
+      total: questions.length,
+      topic: topicLabel,
+      answers: updated,
+    }));
+
+    // Also send to backend to save in MongoDB
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('https://eduquiz-backend-k88u.onrender.com/api/quiz/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          score,
+          total: questions.length,
+          topic: topicLabel,
+          answers: updated,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to save result to backend:', err);
+    }
+
+    navigate('/results');
+  }, [topic, questions, navigate]);
 
   const goNext = useCallback(() => {
     const isCorrect = selected === questions[current].correct;
     const updated   = [...answers, { id: questions[current].id, selected, isCorrect }];
     setAnswers(updated);
+
     if (current + 1 < questions.length) {
       setCurrent(c => c + 1);
       setSelected(null);
@@ -72,15 +108,9 @@ function QuizPage() {
       setTimer(30);
     } else {
       const score = updated.filter(a => a.isCorrect).length;
-      localStorage.setItem('quizResult', JSON.stringify({
-        score,
-        total: questions.length,
-        topic: TOPICS.find(t => t.key === topic).label,
-        answers: updated,
-      }));
-      navigate('/results');
+      submitResult(updated, score);
     }
-  }, [selected, current, questions, answers, navigate, topic]);
+  }, [selected, current, questions, answers, submitResult]);
 
   useEffect(() => {
     if (!started || answered) return;
