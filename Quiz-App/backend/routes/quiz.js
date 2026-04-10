@@ -1,5 +1,6 @@
 const express  = require('express');
 const Quiz     = require('../models/Quiz');
+const Result   = require('../models/Result');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const router   = express.Router();
 
@@ -60,16 +61,37 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
   }
 });
 
-// SUBMIT quiz result — POST /api/quiz/:id/submit (user)
-router.post('/:id/submit', protect, async (req, res) => {
+// SUBMIT quiz result — POST /api/quiz/submit
+router.post('/submit', protect, async (req, res) => {
   try {
-    const { answers, score, total } = req.body;
+    const { score, total, topic, answers } = req.body;
+
+    // Save result to MongoDB
+    const result = await Result.create({
+      user: req.user.id,
+      topic,
+      score,
+      total,
+      answers,
+    });
+
     res.json({
       message: 'Quiz submitted successfully',
       score,
       total,
       percentage: Math.round((score / total) * 100),
+      resultId: result._id,
     });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET all results for logged in user — GET /api/quiz/my-results
+router.get('/my-results', protect, async (req, res) => {
+  try {
+    const results = await Result.find({ user: req.user.id }).sort({ createdAt: -1 });
+    res.json(results);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
