@@ -30,7 +30,7 @@ function Register() {
     if (err) { setError(err); return; }
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/auth/register', {
+      await axios.post('https://eduquiz-backend-k88u.onrender.com/api/auth/register', {
         name:     form.name,
         email:    form.email,
         password: form.password,
