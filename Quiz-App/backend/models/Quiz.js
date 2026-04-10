@@ -16,3 +16,22 @@ const quizSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Quiz', quizSchema);
+const Result = require('../models/Result');
+
+router.post('/submit', protect, async (req, res) => {
+  try {
+    const { score, total, topic, answers } = req.body;
+    const result = await Result.create({
+      user: req.user.id,
+      topic, score, total, answers
+    });
+    res.json({
+      message: 'Quiz submitted successfully',
+      score,
+      total,
+      percentage: Math.round((score / total) * 100),
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
